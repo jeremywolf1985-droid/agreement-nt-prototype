@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgreemeNT - Tenement & Agreement Management</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 60px);
+            position: relative;
+            z-index: 0;
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .logo-agree {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .logo-nt {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f766e;
+        }
+
+        .search-input {
+            width: 384px;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+        }
+
+        .company-card {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            width: 384px;
+            height: calc(100vh - 60px);
+            background: white;
+            box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 40;
+            overflow-y: auto;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            padding: 24px;
+        }
+
+        .company-card.show {
+            transform: translateX(0);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 45;
+            display: none;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        .modal-overlay.show {
+            display: block;
+        }
+
+        .modal-content {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            animation: slideUp 0.3s ease-in-out;
+        }
+
+        .modal-content.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .evidence-pack {
+            position: fixed;
+            inset: 0;
+            background: #e5e7eb;
+            z-index: 40;
+            display: none;
+            overflow-y: auto;
+            padding-top: 60px;
+            animation: fadeInDown 0.3s ease-in-out;
+        }
+
+        .evidence-pack.show {
+            display: block;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #111827;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 60;
+            animation: slideIn 0.3s ease-in-out, slideOut 0.3s ease-in-out 2.7s forwards;
+            font-size: 14px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #0f766e;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .risk-badge.clear {
+            background: #d1fae5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+
+        .risk-badge.action_required {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fcd34d;
+        }
+
+        .risk-badge.restricted {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-pill.satisfied {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pill.overdue {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-pill.upcoming {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-pill.pending {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .status-pill.active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pill.pending-status {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .status-pill.expired {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .obligation-card {
+            background: #f9fafb;
+            border-left: 4px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .obligation-card.satisfied {
+            border-left-color: #10b981;
+        }
+
+        .obligation-card.upcoming {
+            border-left-color: #3b82f6;
+        }
+
+        .obligation-card.overdue {
+            border-left-color: #ef4444;
+        }
+
+        .obligation-card:hover {
+            background: #f3f4f6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .obligation-card.expanded {
+            background: white;
+            border: 1px solid #e5e7eb;
+            padding: 16px;
+        }
+
+        .obligation-card.expanded.accepted {
+            border: 2px solid #10b981;
+            background: #f0fdf4;
+        }
+
+        .obligation-card.expanded.rejected {
+            opacity: 0.4;
+        }
+
+        .blocks-activity {
+            background: #dc2626;
+            color: white;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+            margin: 8px 0;
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 48px;
+            left: 20px;
+            width: 384px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 51;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f9fafb;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item-name {
+            font-weight: 600;
+            color: #111827;
+            font-size: 14px;
+        }
+
+        .dropdown-item-info {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            padding: 0;
+            border: 1px solid #e5e7eb;
+        }
+
+        .leaflet-popup {
+            margin-bottom: 20px;
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            padding: 0;
+        }
+
+        .tenement-popup {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 280px;
+        }
+
+        .ai-summary-box {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.6;
+            font-style: italic;
+            color: #0c4a6e;
+        }
+
+        .back-arrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #0f766e;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 0;
+            transition: all 0.2s;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: #f0fdfa;
+        }
+
+        .back-arrow:hover {
+            background: #ccfbf1;
+            color: #0d9488;
+        }
+
+        .breadcrumb-link {
+            color: #0f766e;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .breadcrumb-link:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb-sep {
+            color: #d1d5db;
+            margin: 0 2px;
+        }
+
+        .breadcrumb-current {
+            color: #111827;
+            font-weight: 500;
+        }
+
+        .close-button {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        .close-button:hover {
+            opacity: 0.8;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .agreement-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .agreement-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .agreement-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .agreement-parties {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .party-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            color: #6b7280;
+        }
+
+        .party-row svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .agreement-date {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .agreement-date svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .agreement-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .action-button {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .action-button:hover {
+            background: #f9fafb;
+        }
+
+        .action-button svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .obligation-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #111827;
+            cursor: pointer;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .obligation-toggle svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .obligation-toggle.expanded svg {
+            transform: rotate(180deg);
+        }
+
+        .obligation-toggle .overdue-count {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .pdf-page {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 32px;
+            max-width: 56rem;
+            margin: 32px auto;
+        }
+
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .pdf-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .pdf-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pdf-date {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .pdf-section {
+            margin-bottom: 24px;
+        }
+
+        .pdf-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #0f766e;
+            padding-bottom: 8px;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .pdf-table th {
+            background: #f3f4f6;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #111827;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .pdf-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .pdf-table tr:nth-child(odd) {
+            background: #f9fafb;
+        }
+
+        .pdf-footer {
+            font-size: 11px;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .map-placeholder {
+            background: #f3f4f6;
+            border-radius: 8px;
+            height: 256px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .evidence-pack-topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            z-index: 41;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 20px;
+        }
+
+        .tab-button {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            color: #0f766e;
+            border-bottom-color: #0f766e;
+        }
+
+        .tab-button:hover {
+            color: #111827;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 32px;
+            border-bottom: 1px solid #e5e7eb;
+            background: white;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+
+        .modal-body {
+            padding: 32px;
+            overflow-y: auto;
+            max-height: calc(80vh - 120px);
+        }
+
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 32px;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+        }
+
+        .button-primary {
+            background: #0f766e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .button-primary:hover:not(:disabled) {
+            background: #115e59;
+        }
+
+        .button-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-secondary {
+            background: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .button-secondary:hover {
+            background: #f9fafb;
+        }
+
+        .upload-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 48px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .upload-zone:hover {
+            border-color: #0f766e;
+        }
+
+        .upload-zone.has-file {
+            border: 2px solid #0f766e;
+            background: #f0fdf4;
+        }
+
+        .upload-zone svg {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            opacity: 0.5;
+        }
+
+        .processing-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 48px;
+        }
+
+        .processing-text {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .suggestions-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .suggestion-column h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 16px;
+        }
+
+        .suggestion-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .suggestion-card.accepted {
+            border: 2px solid #10b981;
+            background: #f0fdf4;
+        }
+
+        .suggestion-card.rejected {
+            opacity: 0.4;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: flex-end;
+        }
+
+        .suggestion-actions button {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-accept {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-accept:hover {
+            background: #059669;
+        }
+
+        .btn-edit {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #d97706;
+        }
+
+        .btn-reject {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #dc2626;
+        }
+
+        .summary-list {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 16px;
+            list-style: decimal;
+            list-style-position: inside;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #0c4a6e;
+        }
+
+        .summary-list li {
+            margin-bottom: 8px;
+        }
+
+        .right-icons {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-left: auto;
+        }
+
+        .icon-button {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            position: relative;
+        }
+
+        .icon-button:hover {
+            opacity: 1;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #0f766e;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .position-relative {
+            position: relative;
+        }
+
+        .responsibility-pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .responsibility-pill.company {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .responsibility-pill.to {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
+        .responsibility-pill.both {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .activity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .activity-badge.can_proceed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .activity-badge.restricted {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .activity-badge.blocked {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="logo" onclick="dismissAll()" style="cursor: pointer;" title="Back to map">
+            <span class="logo-agree">Agreeme</span><span class="logo-nt">NT</span>
+        </div>
+        <div class="position-relative" style="flex: 1; max-width: 384px;">
+            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input
+                type="text"
+                id="searchInput"
+                class="search-input"
+                placeholder="Search company or tenement ID..."
+                autocomplete="off"
+            >
+            <div id="searchDropdown" class="search-dropdown"></div>
+        </div>
+        <div class="right-icons">
+            <div class="icon-button">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                <div class="notification-badge"></div>
+            </div>
+            <div class="avatar">BR</div>
+        </div>
+    </div>
+
+    <!-- Leaflet Map -->
+    <div id="map"></div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <!-- Company Card -->
+    <div id="companyCard" class="company-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div id="breadcrumb" style="font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;"></div>
+            <div class="close-button" onclick="dismissAll()" title="Close panel">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+        </div>
+        <div id="navBackBar" style="margin-bottom: 12px; display: none;">
+            <div class="back-arrow" id="navBackBtn" onclick="navigateBack()">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                <span id="navBackLabel">Back</span>
+            </div>
+        </div>
+        <h2 id="companyTitle" style="font-size: 20px; font-weight: 600; color: #111827; margin: 0 0 16px 0;"></h2>
+        <div id="cardContent"></div>
+    </div>
+
+    <!-- AI Modal -->
+    <div id="aiModal" class="modal-content">
+        <div style="background: white; max-width: 80rem; width: 90%; max-height: 80vh; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; overflow: hidden;">
+            <div class="modal-header">
+                <h2>AI Agreement Analysis</h2>
+                <div class="close-button" onclick="closeAIModal()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+            </div>
+            <div id="aiContent" class="modal-body" style="flex: 1;"></div>
+            <div class="modal-footer">
+                <button class="button-secondary" onclick="closeAIModal()">Cancel</button>
+                <button id="confirmBtn" class="button-primary" style="display: none;" onclick="confirmAIObligation()">Confirm 5 Accepted Obligations</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evidence Pack -->
+    <div id="evidencePack" class="evidence-pack">
+        <div class="evidence-pack-topbar">
+            <div class="back-arrow" onclick="closeEvidencePack()" style="margin-bottom: 0;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to company
+            </div>
+            <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin: 0; flex: 1; margin-left: 20px;">Company Snapshot</h2>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <button id="snapshotTab" class="tab-button active" onclick="switchEvidenceTab('snapshot')">Snapshot</button>
+                <button id="detailsTab" class="tab-button" onclick="switchEvidenceTab('details')">Details</button>
+                <button class="button-primary" style="margin-left: 20px;" onclick="downloadEvidencePDF()">Download PDF</button>
+                <div class="close-button" onclick="closeEvidencePack()" title="Close snapshot" style="margin-left: 8px;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div id="evidenceContent" style="padding-top: 60px;"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // ==================== DUMMY DATA ====================
+
+        const companies = [
+            {
+                id: 'fortescue',
+                name: 'Fortescue Resources Ltd',
+                acn: '123 456 789',
+                tenementCount: 12,
+                agreementCount: 4,
+                obligationsDue: 3,
+                obligationsOverdue: 1,
+                riskState: 'action_required',
+                mapCentre: [-22.3, 118.5],
+                zoom: 9
+            },
+            {
+                id: 'pilbara',
+                name: 'Pilbara Minerals Pty Ltd',
+                acn: '234 567 890',
+                tenementCount: 8,
+                agreementCount: 2,
+                obligationsDue: 1,
+                obligationsOverdue: 0,
+                riskState: 'clear',
+                mapCentre: [-21.8, 119.2],
+                zoom: 9
+            },
+            {
+                id: 'goldfields',
+                name: 'Goldfields Mining Corp',
+                acn: '345 678 901',
+                tenementCount: 15,
+                agreementCount: 6,
+                obligationsDue: 5,
+                obligationsOverdue: 3,
+                riskState: 'restricted',
+                mapCentre: [-31.0, 121.5],
+                zoom: 9
+            }
+        ];
+
+        const tenements = [
+            {
+                id: 'E45/6234',
+                type: 'Exploration',
+                holder: 'Fortescue Resources Ltd',
+                companyId: 'fortescue',
+                status: 'Active',
+                agreements: ['yindjibarndi'],
+                activity: 'can_proceed',
+                polygon: [[-22.1, 118.2], [-22.1, 118.5], [-22.4, 118.5], [-22.4, 118.2]]
+            },
+            {
+                id: 'M45/1189',
+                type: 'Mining Lease',
+                holder: 'Fortescue Resources Ltd',
+                companyId: 'fortescue',
+                status: 'Pending',
+                agreements: ['yindjibarndi'],
+                activity: 'restricted',
+                polygon: [[-22.0, 118.6], [-22.0, 118.8], [-22.2, 118.8], [-22.2, 118.6]]
+            },
+            {
+                id: 'L45/0456',
+                type: 'Miscellaneous',
+                holder: 'Fortescue Resources Ltd',
+                companyId: 'fortescue',
+                status: 'Active',
+                agreements: [],
+                activity: 'can_proceed',
+                polygon: [[-22.5, 118.3], [-22.5, 118.45], [-22.65, 118.45], [-22.65, 118.3]]
+            },
+            {
+                id: 'E45/6235',
+                type: 'Exploration',
+                holder: 'Fortescue Resources Ltd',
+                companyId: 'fortescue',
+                status: 'Active',
+                agreements: ['yindjibarndi'],
+                activity: 'can_proceed',
+                polygon: [[-22.3, 118.9], [-22.3, 119.1], [-22.5, 119.1], [-22.5, 118.9]]
+            },
+            {
+                id: 'P45/3312',
+                type: 'Prospecting',
+                holder: 'Fortescue Resources Ltd',
+                companyId: 'fortescue',
+                status: 'Active',
+                agreements: ['kariyarra'],
+                activity: 'can_proceed',
+                polygon: [[-22.6, 118.0], [-22.6, 118.2], [-22.8, 118.2], [-22.8, 118.0]]
+            }
+        ];
+
+        const agreements = [
+            {
+                id: 'yindjibarndi',
+                companyId: 'fortescue',
+                name: 'Yindjibarndi Land Access Agreement',
+                toGroup: 'Yindjibarndi Aboriginal Corporation RNTBC',
+                company: 'Fortescue Resources Ltd',
+                effectiveDate: '1 Jan 2023',
+                endDate: '31 Dec 2033',
+                term: '10 years',
+                linkedTenements: ['E45/6234', 'M45/1189', 'E45/6235'],
+                obligationCount: 5,
+                overdueCount: 1,
+                aiSummary: 'Comprehensive land access agreement covering exploration and mining activities in the Yindjibarndi determination area. Includes heritage protection protocols, annual community payments, and employment commitments.'
+            },
+            {
+                id: 'kariyarra',
+                companyId: 'fortescue',
+                name: 'Kariyarra Heritage Protection Agreement',
+                toGroup: 'Kariyarra People (Native Title)',
+                company: 'Fortescue Resources Ltd',
+                effectiveDate: '15 Mar 2024',
+                endDate: '14 Mar 2029',
+                term: '5 years',
+                linkedTenements: ['P45/3312'],
+                obligationCount: 2,
+                overdueCount: 0,
+                aiSummary: 'Heritage protection agreement focused on managing cultural heritage impacts from prospecting activities in the Kariyarra native title area.'
+            }
+        ];
+
+        const obligations = [
+            {
+                id: 'obl1',
+                agreementId: 'yindjibarndi',
+                type: 'Financial Payment',
+                description: 'Annual community fund payment of $250,000 to Yindjibarndi Aboriginal Corporation for community development programs including education, health, and housing initiatives.',
+                dueDate: '30 Jun 2026',
+                trigger: null,
+                responsibleParty: 'company',
+                status: 'upcoming',
+                evidenceRequired: true,
+                evidenceAttached: false,
+                evidenceType: 'Payment receipt',
+                blocksActivity: false,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '15 Jan 2023'
+            },
+            {
+                id: 'obl2',
+                agreementId: 'yindjibarndi',
+                type: 'Heritage Survey',
+                description: 'Heritage survey required for Area C Extension before any ground disturbance activities can commence. Survey must be conducted jointly with Yindjibarndi representatives and an approved archaeologist.',
+                dueDate: null,
+                trigger: 'Before ground disturbance — Area C Extension',
+                responsibleParty: 'both',
+                status: 'overdue',
+                evidenceRequired: true,
+                evidenceAttached: false,
+                evidenceType: 'Survey report',
+                blocksActivity: true,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '15 Jan 2023'
+            },
+            {
+                id: 'obl3',
+                agreementId: 'yindjibarndi',
+                type: 'Reporting',
+                description: 'Quarterly employment report detailing Indigenous employment numbers, training hours, and workforce development initiatives across all project sites.',
+                dueDate: '31 Mar 2026',
+                trigger: null,
+                responsibleParty: 'company',
+                status: 'upcoming',
+                evidenceRequired: true,
+                evidenceAttached: false,
+                evidenceType: 'Employment data spreadsheet',
+                blocksActivity: false,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '15 Jan 2023'
+            },
+            {
+                id: 'obl4',
+                agreementId: 'yindjibarndi',
+                type: 'Training',
+                description: 'Cultural awareness training mandatory for all new personnel within 60 days of commencement. Training to be delivered by Yindjibarndi-approved cultural advisors.',
+                dueDate: null,
+                trigger: 'Within 60 days of new staff commencement',
+                responsibleParty: 'company',
+                status: 'satisfied',
+                evidenceRequired: true,
+                evidenceAttached: true,
+                evidenceType: 'Training certificates',
+                blocksActivity: false,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '15 Jan 2023'
+            },
+            {
+                id: 'obl5',
+                agreementId: 'yindjibarndi',
+                type: 'Environmental',
+                description: 'Environmental monitoring report covering water quality, dust levels, and rehabilitation progress across all active tenement areas.',
+                dueDate: '30 Sep 2026',
+                trigger: null,
+                responsibleParty: 'company',
+                status: 'pending',
+                evidenceRequired: true,
+                evidenceAttached: false,
+                evidenceType: 'Monitoring data',
+                blocksActivity: false,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '15 Jan 2023'
+            },
+            {
+                id: 'obl6',
+                agreementId: 'kariyarra',
+                type: 'Heritage Survey',
+                description: 'Pre-disturbance heritage survey required for all new prospecting areas within the Kariyarra determination. Must be completed with Traditional Owner participation.',
+                dueDate: null,
+                trigger: 'Before ground disturbance in new areas',
+                responsibleParty: 'both',
+                status: 'pending',
+                evidenceRequired: true,
+                evidenceAttached: false,
+                evidenceType: 'Survey report',
+                blocksActivity: true,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '20 Mar 2024'
+            },
+            {
+                id: 'obl7',
+                agreementId: 'kariyarra',
+                type: 'Community Fund',
+                description: 'Annual contribution of $50,000 to the Kariyarra Community Development Fund for programs supporting youth education and cultural preservation.',
+                dueDate: '15 Mar 2027',
+                trigger: null,
+                responsibleParty: 'company',
+                status: 'pending',
+                evidenceRequired: true,
+                evidenceAttached: false,
+                evidenceType: 'Payment receipt',
+                blocksActivity: false,
+                addedBy: 'Bruce Rudeforth',
+                addedDate: '20 Mar 2024'
+            }
+        ];
+
+        const aiSuggestions = [
+            {
+                id: 'ai1',
+                type: 'Financial Payment',
+                description: 'Annual royalty payment of $150,000 per annum indexed to CPI.',
+                dueDate: '31 December each year',
+                responsibleParty: 'company',
+                evidenceType: 'Payment receipt and CPI calculation',
+                blocksActivity: false
+            },
+            {
+                id: 'ai2',
+                type: 'Heritage Survey',
+                description: 'Sacred site exclusion zone — no activity within 500m of designated sites. Permanent obligation.',
+                dueDate: 'Permanent',
+                responsibleParty: 'both',
+                evidenceType: 'Site survey and GPS coordinates',
+                blocksActivity: true
+            },
+            {
+                id: 'ai3',
+                type: 'Employment Target',
+                description: 'Indigenous employment target of 15% of total project workforce. Quarterly reporting required.',
+                dueDate: 'Quarterly',
+                responsibleParty: 'company',
+                evidenceType: 'Workforce composition report',
+                blocksActivity: false
+            },
+            {
+                id: 'ai4',
+                type: 'Environmental',
+                description: 'Water monitoring at 3 designated bore locations. Monthly sampling and reporting.',
+                dueDate: 'Monthly',
+                responsibleParty: 'company',
+                evidenceType: 'Water quality test results',
+                blocksActivity: false
+            },
+            {
+                id: 'ai5',
+                type: 'Community Fund',
+                description: 'Quarterly community liaison meeting with joint attendance from company and TO representatives.',
+                dueDate: 'Quarterly',
+                responsibleParty: 'both',
+                evidenceType: 'Meeting minutes and attendance record',
+                blocksActivity: false
+            }
+        ];
+
+        const aiSummaryBullets = [
+            '10-year land access agreement covering E45/7890, E45/7891, and M45/2234',
+            'Annual royalty of $150,000 indexed to CPI, payable 31 December',
+            'Sacred site exclusion zones established — 500m buffer, no exceptions',
+            'Indigenous employment target of 15% across all project activities',
+            'Quarterly community liaison meetings with joint attendance',
+            'Heritage survey required before any ground disturbance in new areas',
+            'Environmental monitoring at 3 bore locations, monthly reporting',
+            '$100,000 community development fund contribution per annum',
+            'Cultural awareness training mandatory for all new site personnel',
+            'Agreement can be terminated with 12 months notice by either party'
+        ];
+
+        // ==================== STATE MANAGEMENT ====================
+
+        let currentState = 'MAP_ONLY';
+        let currentCompanyId = null;
+        let currentAgreementId = null;
+        let expandedObligations = new Set();
+        let map = null;
+        let tenementLayers = {};
+        let acceptedAIObligation = new Set();
+        let rejectedAIObligation = new Set();
+
+        // ==================== MAP INITIALIZATION ====================
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: true
+            }).setView([-22.3, 118.5], 6);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+        }
+
+        function getPolygonStyle(tenement) {
+            const colours = {
+                can_proceed: { color: '#10b981', fillColor: '#10b981' },
+                restricted: { color: '#f59e0b', fillColor: '#f59e0b' },
+                blocked: { color: '#ef4444', fillColor: '#ef4444' }
+            };
+            const c = colours[tenement.activity] || colours.can_proceed;
+            return { ...c, weight: 2, fillOpacity: 0.25 };
+        }
+
+        function renderTenementPolygons(companyId) {
+            clearTenementLayers();
+            const companyTenements = tenements.filter(t => t.companyId === companyId);
+
+            companyTenements.forEach(tenement => {
+                const style = getPolygonStyle(tenement);
+                const polygon = L.polygon(tenement.polygon, style).addTo(map);
+
+                polygon.bindPopup(createTenementPopup(tenement), {
+                    className: 'custom-popup',
+                    maxWidth: 320,
+                    maxHeight: 300
+                });
+
+                polygon.on('mouseover', function() {
+                    this.setStyle({ fillOpacity: 0.5 });
+                    this.bindTooltip(tenement.id);
+                });
+
+                polygon.on('mouseout', function() {
+                    this.setStyle({ fillOpacity: 0.25 });
+                });
+
+                tenementLayers[tenement.id] = polygon;
+            });
+        }
+
+        function createTenementPopup(tenement) {
+            const linkedAgreements = tenement.agreements.length;
+            const statusClass = tenement.status === 'Active' ? 'active' :
+                               tenement.status === 'Pending' ? 'pending-status' : 'expired';
+
+            return `
+                <div class="tenement-popup">
+                    <div style="font-family: monospace; font-weight: bold; margin-bottom: 8px;">${tenement.id}</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">${tenement.holder}</div>
+                    <div class="status-pill ${statusClass}" style="display: inline-block; margin-bottom: 8px;">${tenement.status}</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                        <strong>${linkedAgreements}</strong> agreements linked
+                    </div>
+                    <div class="activity-badge ${tenement.activity}">
+                        ${tenement.activity === 'can_proceed' ? '✓ CAN PROCEED' :
+                          tenement.activity === 'restricted' ? '⚠ RESTRICTED' : '✕ BLOCKED'}
+                    </div>
+                </div>
+            `;
+        }
+
+        function clearTenementLayers() {
+            Object.values(tenementLayers).forEach(layer => {
+                map.removeLayer(layer);
+            });
+            tenementLayers = {};
+        }
+
+        function flyToTenements(tenementIds) {
+            if (tenementIds.length === 0) return;
+
+            const tenemsToFly = tenements.filter(t => tenementIds.includes(t.id));
+            if (tenemsToFly.length === 0) return;
+
+            let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+
+            tenemsToFly.forEach(t => {
+                t.polygon.forEach(coord => {
+                    minLat = Math.min(minLat, coord[0]);
+                    maxLat = Math.max(maxLat, coord[0]);
+                    minLng = Math.min(minLng, coord[1]);
+                    maxLng = Math.max(maxLng, coord[1]);
+                });
+            });
+
+            const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+            map.fitBounds(bounds, { padding: [50, 50] });
+
+            tenemsToFly.forEach(t => {
+                if (tenementLayers[t.id]) {
+                    tenementLayers[t.id].setStyle({ fillOpacity: 0.5 });
+                    setTimeout(() => {
+                        if (tenementLayers[t.id]) {
+                            tenementLayers[t.id].setStyle({ fillOpacity: 0.25 });
+                        }
+                    }, 2000);
+                }
+            });
+        }
+
+        // ==================== SEARCH & DROPDOWN ====================
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const value = e.target.value.trim().toLowerCase();
+            const dropdown = document.getElementById('searchDropdown');
+
+            if (!value) {
+                dropdown.classList.remove('show');
+                return;
+            }
+
+            const filtered = companies.filter(c => c.name.toLowerCase().includes(value));
+
+            if (filtered.length === 0) {
+                dropdown.classList.remove('show');
+                return;
+            }
+
+            dropdown.innerHTML = filtered.map(c => `
+                <div class="dropdown-item" onclick="selectCompany('${c.id}')">
+                    <div class="dropdown-item-name">${c.name}</div>
+                    <div class="dropdown-item-info">${c.tenementCount} tenements • ${c.agreementCount} agreements</div>
+                </div>
+            `).join('');
+
+            dropdown.classList.add('show');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.position-relative')) {
+                document.getElementById('searchDropdown').classList.remove('show');
+            }
+        });
+
+        function selectCompany(companyId) {
+            showCompanyCard(companyId);
+        }
+
+        // ==================== NAVIGATION ====================
+
+        const navHistory = [];
+
+        function updateNavUI() {
+            const backBar = document.getElementById('navBackBar');
+            const breadcrumb = document.getElementById('breadcrumb');
+            const company = currentCompanyId ? companies.find(c => c.id === currentCompanyId) : null;
+            const companyShort = company ? (company.name.length > 20 ? company.name.substring(0, 18) + '…' : company.name) : '';
+
+            if (currentState === 'COMPANY_CARD') {
+                backBar.style.display = 'block';
+                document.getElementById('navBackLabel').textContent = 'Back to map';
+                document.getElementById('navBackBtn').setAttribute('onclick', 'dismissAll()');
+                breadcrumb.innerHTML = `<span class="breadcrumb-link" onclick="dismissAll()">Map</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-current">${companyShort}</span>`;
+            } else if (currentState === 'AGREEMENTS') {
+                backBar.style.display = 'block';
+                document.getElementById('navBackLabel').textContent = 'Back to company';
+                document.getElementById('navBackBtn').setAttribute('onclick', `showCompanyCard('${currentCompanyId}')`);
+                breadcrumb.innerHTML = `<span class="breadcrumb-link" onclick="dismissAll()">Map</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-link" onclick="showCompanyCard('${currentCompanyId}')">${companyShort}</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-current">Agreements</span>`;
+            } else if (currentState === 'EVIDENCE_PACK') {
+                backBar.style.display = 'none';
+                breadcrumb.innerHTML = '';
+            } else {
+                backBar.style.display = 'none';
+                breadcrumb.innerHTML = '';
+            }
+        }
+
+        function navigateBack() {
+            // Fallback — individual onclick handlers are set in updateNavUI
+            if (currentState === 'AGREEMENTS') {
+                showCompanyCard(currentCompanyId);
+            } else if (currentState === 'COMPANY_CARD') {
+                dismissAll();
+            }
+        }
+
+        function showCompanyCard(companyId) {
+            currentCompanyId = companyId;
+            currentState = 'COMPANY_CARD';
+
+            const company = companies.find(c => c.id === companyId);
+            document.getElementById('searchInput').value = company.name;
+            document.getElementById('companyTitle').textContent = company.name;
+
+            renderTenementPolygons(companyId);
+            map.flyTo(company.mapCentre, company.zoom);
+
+            renderCompanyCardContent();
+            document.getElementById('companyCard').classList.add('show');
+            document.getElementById('searchDropdown').classList.remove('show');
+            updateNavUI();
+        }
+
+        function renderCompanyCardContent() {
+            const company = companies.find(c => c.id === currentCompanyId);
+            const riskClass = `risk-badge ${company.riskState}`;
+            const riskText = company.riskState === 'clear' ? 'CLEAR — No Outstanding Issues' :
+                           company.riskState === 'action_required' ? `ACTION REQUIRED — ${company.obligationsDue} Obligations Due` :
+                           'RESTRICTED — Overdue Obligations';
+
+            const upcomingObls = obligations
+                .filter(o => agreements.find(a => a.id === o.agreementId && a.companyId === currentCompanyId))
+                .slice(0, 5);
+
+            const cardContent = `
+                <div class="${riskClass}" style="width: 100%; margin-bottom: 20px;">${riskText}</div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                    <div class="metric-card">
+                        <div class="metric-value">${company.tenementCount}</div>
+                        <div class="metric-label">Tenements</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${company.agreementCount}</div>
+                        <div class="metric-label">Agreements</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${company.obligationsDue}</div>
+                        <div class="metric-label">Due (90d)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${company.obligationsOverdue}</div>
+                        <div class="metric-label">Overdue</div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 12px; color: #111827;">Upcoming Obligations</h3>
+                ${upcomingObls.map(o => {
+                    const statusClass = `status-pill ${o.status}`;
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
+                            <div>
+                                <div style="color: #6b7280;">${o.dueDate || o.trigger}</div>
+                                <div style="font-weight: 500; color: #111827;">${o.type}</div>
+                            </div>
+                            <div class="${statusClass}">${o.status.toUpperCase()}</div>
+                        </div>
+                    `;
+                }).join('')}
+                ${obligations.length > 5 ? `<div style="color: #0f766e; font-size: 13px; margin-top: 8px; cursor: pointer;">View all ${obligations.length} obligations →</div>` : ''}
+
+                <div class="divider"></div>
+
+                <button class="button-primary" style="width: 100%; margin-bottom: 8px;" onclick="showAgreements('${currentCompanyId}')">View Agreements</button>
+                <button class="button-secondary" style="width: 100%; margin-bottom: 8px;" onclick="viewTenements()">View Tenements</button>
+                <button class="button-secondary" style="width: 100%;" onclick="showEvidencePack('${currentCompanyId}')">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: inline; margin-right: 4px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export Snapshot PDF
+                </button>
+            `;
+
+            document.getElementById('cardContent').innerHTML = cardContent;
+        }
+
+        function showAgreements(companyId) {
+            currentState = 'AGREEMENTS';
+            currentCompanyId = companyId;
+
+            const company = companies.find(c => c.id === companyId);
+            const companyAgreements = agreements.filter(a => a.companyId === companyId);
+            document.getElementById('companyTitle').textContent = 'Agreements';
+
+            let cardContent = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="font-size: 14px; color: #6b7280;">${companyAgreements.length} agreement${companyAgreements.length !== 1 ? 's' : ''} for ${company.name}</div>
+                </div>
+
+                <button class="button-primary" style="width: 100%; margin-bottom: 16px;" onclick="openAIModal()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: inline; margin-right: 8px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Upload Agreement
+                </button>
+            `;
+
+            updateNavUI();
+
+            companyAgreements.forEach(agreement => {
+                const agreementObligations = obligations.filter(o => o.agreementId === agreement.id);
+                const overdueCount = agreementObligations.filter(o => o.status === 'overdue').length;
+                const isExpanded = expandedObligations.has(agreement.id);
+
+                cardContent += `
+                    <div class="agreement-card">
+                        <h3 class="agreement-title">${agreement.name}</h3>
+
+                        <div class="agreement-parties">
+                            <div class="party-row">
+                                <svg fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M7 8a4 4 0 118 0A4 4 0 017 8zM6 20c0-1.657.895-3.071 2.188-3.82A4 4 0 004 12h16a4 4 0 00-4.188 4.18C17.105 16.929 18 18.343 18 20H6z"></path>
+                                </svg>
+                                <div style="line-height: 1.4;">${agreement.toGroup}</div>
+                            </div>
+                            <div class="party-row">
+                                <svg fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 17a6 6 0 0112 0v4H6v-4z"></path>
+                                </svg>
+                                <div style="line-height: 1.4;">${agreement.company}</div>
+                            </div>
+                        </div>
+
+                        <div class="agreement-date">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>${agreement.effectiveDate} — ${agreement.endDate} (${agreement.term})</span>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div style="background: #f3f4f6; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #6b7280;">
+                                <span style="font-weight: 600;">${agreement.linkedTenements.length}</span> tenements
+                            </div>
+                            <div class="agreement-actions">
+                                <button class="action-button" onclick="showToast('PDF would open in production')">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    View PDF
+                                </button>
+                                <button class="action-button" onclick="showToast('AI Summary displayed below')">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    AI Summary
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="ai-summary-box">${agreement.aiSummary}</div>
+
+                        <div class="obligation-toggle ${isExpanded ? 'expanded' : ''}" onclick="toggleObligations('${agreement.id}')">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                            <span>${agreement.obligationCount} obligations</span>
+                            ${overdueCount > 0 ? `<span class="overdue-count"> (${overdueCount} overdue)</span>` : ''}
+                        </div>
+
+                        ${isExpanded ? `<div id="obligations-${agreement.id}" style="margin-top: 12px;">${renderObligationCards(agreement.id)}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            document.getElementById('cardContent').innerHTML = cardContent;
+        }
+
+        function renderObligationCards(agreementId) {
+            const agreementObligations = obligations.filter(o => o.agreementId === agreementId);
+
+            return agreementObligations.map((obl, idx) => {
+                const statusClass = obl.status;
+                const responsibilityClass = obl.responsibleParty === 'company' ? 'company' :
+                                          obl.responsibleParty === 'both' ? 'both' : 'to';
+                const responsibilityText = obl.responsibleParty === 'company' ? 'Company' :
+                                         obl.responsibleParty === 'both' ? 'Both' : 'Traditional Owner';
+
+                return `
+                    <div class="obligation-card ${statusClass}" id="obl-${obl.id}" onclick="expandObligation('${obl.id}', '${agreementId}')">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="font-weight: 500; color: #111827; font-size: 13px;">${obl.type}</div>
+                            </div>
+                            <div class="status-pill ${statusClass}">${obl.status.toUpperCase()}</div>
+                        </div>
+
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                            ${obl.dueDate ? obl.dueDate : obl.trigger}
+                        </div>
+
+                        <div class="responsibility-pill ${responsibilityClass}">${responsibilityText}</div>
+
+                        ${obl.blocksActivity ? '<div class="blocks-activity">BLOCKS ACTIVITY</div>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function expandObligation(obligationId, agreementId) {
+            const obl = obligations.find(o => o.id === obligationId);
+            const card = document.getElementById(`obl-${obligationId}`);
+            const isExpanded = card.classList.contains('expanded');
+
+            if (isExpanded) {
+                card.classList.remove('expanded');
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div style="font-weight: 500; color: #111827; font-size: 13px;">${obl.type}</div>
+                        </div>
+                        <div class="status-pill ${obl.status}">${obl.status.toUpperCase()}</div>
+                    </div>
+
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                        ${obl.dueDate ? obl.dueDate : obl.trigger}
+                    </div>
+
+                    <div class="responsibility-pill ${obl.responsibleParty === 'company' ? 'company' : obl.responsibleParty === 'both' ? 'both' : 'to'}">
+                        ${obl.responsibleParty === 'company' ? 'Company' : obl.responsibleParty === 'both' ? 'Both' : 'Traditional Owner'}
+                    </div>
+
+                    ${obl.blocksActivity ? '<div class="blocks-activity">BLOCKS ACTIVITY</div>' : ''}
+                `;
+            } else {
+                card.classList.add('expanded');
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-weight: 600; color: #111827; font-size: 14px;">${obl.type}</div>
+                        </div>
+                        <div class="status-pill ${obl.status}">${obl.status.toUpperCase()}</div>
+                    </div>
+
+                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+                        ${obl.dueDate ? obl.dueDate : obl.trigger}
+                    </div>
+
+                    <div class="responsibility-pill ${obl.responsibleParty === 'company' ? 'company' : obl.responsibleParty === 'both' ? 'both' : 'to'}" style="display: inline-block; margin-bottom: 8px;">
+                        ${obl.responsibleParty === 'company' ? 'Company' : obl.responsibleParty === 'both' ? 'Both' : 'Traditional Owner'}
+                    </div>
+
+                    ${obl.blocksActivity ? '<div class="blocks-activity">BLOCKS ACTIVITY</div>' : ''}
+
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                        <p style="font-size: 13px; line-height: 1.6; color: #4b5563; margin: 0 0 12px;">${obl.description}</p>
+
+                        <div style="background: #f9fafb; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                            <div style="font-weight: 600; font-size: 12px; color: #111827; margin-bottom: 8px;">Evidence</div>
+                            <div style="font-size: 12px; color: #6b7280;">
+                                ${obl.evidenceAttached ? `✓ ${obl.evidenceType}` : 'No evidence uploaded yet'}
+                            </div>
+                        </div>
+
+                        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 12px;">
+                            Added by ${obl.addedBy}, ${obl.addedDate}
+                        </div>
+
+                        <div style="display: flex; gap: 8px;">
+                            <button class="button-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="showToast('Evidence upload would open')">Upload Evidence</button>
+                            ${obl.status !== 'satisfied' ? `<button class="button-primary" style="padding: 6px 12px; font-size: 12px;" onclick="markSatisfied('${obl.id}')">Mark Satisfied</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleObligations(agreementId) {
+            if (expandedObligations.has(agreementId)) {
+                expandedObligations.delete(agreementId);
+            } else {
+                expandedObligations.add(agreementId);
+            }
+            showAgreements(currentCompanyId);
+        }
+
+        function markSatisfied(obligationId) {
+            const obl = obligations.find(o => o.id === obligationId);
+            obl.status = 'satisfied';
+            obl.evidenceAttached = true;
+            showToast('Obligation marked as satisfied');
+            showAgreements(currentCompanyId);
+        }
+
+        function viewTenements() {
+            const companyTenements = tenements.filter(t => t.companyId === currentCompanyId);
+            flyToTenements(companyTenements.map(t => t.id));
+            showToast('Map centred on company tenements');
+        }
+
+        // ==================== AI MODAL ====================
+
+        let aiStep = 'upload';
+        let uploadedFileName = null;
+
+        function openAIModal() {
+            document.getElementById('modalOverlay').classList.add('show');
+            document.getElementById('aiModal').classList.add('show');
+            aiStep = 'upload';
+            acceptedAIObligation.clear();
+            rejectedAIObligation.clear();
+            renderAIStep();
+        }
+
+        function closeAIModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+            document.getElementById('aiModal').classList.remove('show');
+            acceptedAIObligation.clear();
+            rejectedAIObligation.clear();
+        }
+
+        function renderAIStep() {
+            const content = document.getElementById('aiContent');
+
+            if (aiStep === 'upload') {
+                content.innerHTML = `
+                    <div class="upload-zone" onclick="simulateFileUpload()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3v-6"></path>
+                        </svg>
+                        <div style="font-size: 14px; color: #111827; margin-bottom: 8px;">Drop agreement PDF here or click to browse</div>
+                        <div style="font-size: 12px; color: #6b7280;">Supported formats: PDF, DOCX</div>
+                    </div>
+                `;
+            } else if (aiStep === 'processing') {
+                content.innerHTML = `
+                    <div class="processing-container">
+                        <div class="spinner"></div>
+                        <div class="processing-text">Analysing agreement and extracting obligations...</div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    aiStep = 'review';
+                    renderAIStep();
+                }, 2000);
+            } else if (aiStep === 'review') {
+                const acceptedCount = acceptedAIObligation.size;
+                const confirmBtn = document.getElementById('confirmBtn');
+                confirmBtn.style.display = 'block';
+                confirmBtn.textContent = `Confirm ${acceptedCount} Accepted Obligation${acceptedCount === 1 ? '' : 's'}`;
+                confirmBtn.disabled = acceptedCount === 0;
+
+                content.innerHTML = `
+                    <div class="suggestions-grid">
+                        <div class="suggestion-column">
+                            <h3>Suggested Obligations</h3>
+                            ${aiSuggestions.map((s, idx) => {
+                                const isAccepted = acceptedAIObligation.has(s.id);
+                                const isRejected = rejectedAIObligation.has(s.id);
+                                const cardClass = isAccepted ? 'accepted' : isRejected ? 'rejected' : '';
+
+                                return `
+                                    <div class="suggestion-card ${cardClass}" id="sugg-${s.id}">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                            <div style="font-weight: 600; color: #111827; font-size: 13px;">${s.type}</div>
+                                            <div class="status-pill" style="background: #f3f4f6; color: #4b5563;">${s.dueDate}</div>
+                                        </div>
+                                        <div style="font-size: 12px; color: #6b7280; line-height: 1.5; margin-bottom: 10px;">${s.description}</div>
+                                        ${s.blocksActivity ? '<div class="blocks-activity">BLOCKS ACTIVITY</div>' : ''}
+                                        <div class="suggestion-actions">
+                                            <button class="btn-accept" onclick="acceptAIObligation('${s.id}')" title="Accept">
+                                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>
+                                            </button>
+                                            <button class="btn-edit" onclick="editAIObligation('${s.id}')" title="Edit">
+                                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"></path></svg>
+                                            </button>
+                                            <button class="btn-reject" onclick="rejectAIObligation('${s.id}')" title="Reject">
+                                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="suggestion-column">
+                            <h3>Agreement Summary</h3>
+                            <ol class="summary-list">
+                                ${aiSummaryBullets.map(b => `<li>${b}</li>`).join('')}
+                            </ol>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function simulateFileUpload() {
+            uploadedFileName = 'Yindjibarndi_Heritage_Agreement_2026.pdf';
+            const zone = document.querySelector('.upload-zone');
+            if (zone) {
+                zone.classList.add('has-file');
+                zone.innerHTML = `
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 12px; width: 48px; height: 48px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <div style="font-weight: 600; color: #111827; font-size: 14px;">${uploadedFileName}</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Ready to analyse</div>
+                `;
+            }
+            setTimeout(() => {
+                aiStep = 'processing';
+                renderAIStep();
+            }, 500);
+        }
+
+        function acceptAIObligation(suggestionId) {
+            acceptedAIObligation.add(suggestionId);
+            rejectedAIObligation.delete(suggestionId);
+            renderAIStep();
+        }
+
+        function rejectAIObligation(suggestionId) {
+            rejectedAIObligation.add(suggestionId);
+            acceptedAIObligation.delete(suggestionId);
+            renderAIStep();
+        }
+
+        function editAIObligation(suggestionId) {
+            showToast('Edit mode activated — fields now editable (simulated)');
+        }
+
+        function confirmAIObligation() {
+            const count = acceptedAIObligation.size;
+            closeAIModal();
+            showToast(`${count} obligations added to agreement`);
+        }
+
+        // ==================== EVIDENCE PACK ====================
+
+        let evidencePackTab = 'snapshot';
+
+        function showEvidencePack(companyId) {
+            currentState = 'EVIDENCE_PACK';
+            document.getElementById('evidencePack').classList.add('show');
+            renderEvidencePackContent();
+        }
+
+        function closeEvidencePack() {
+            document.getElementById('evidencePack').classList.remove('show');
+            showCompanyCard(currentCompanyId);
+        }
+
+        function switchEvidenceTab(tab) {
+            evidencePackTab = tab;
+            document.getElementById('snapshotTab').classList.toggle('active', tab === 'snapshot');
+            document.getElementById('detailsTab').classList.toggle('active', tab === 'details');
+            renderEvidencePackContent();
+        }
+
+        function renderEvidencePackContent() {
+            const company = companies.find(c => c.id === currentCompanyId);
+            const companyTenements = tenements.filter(t => t.companyId === currentCompanyId);
+            const companyAgreements = agreements.filter(a => a.companyId === currentCompanyId);
+            const riskClass = company.riskState === 'clear' ? 'risk-badge clear' :
+                            company.riskState === 'action_required' ? 'risk-badge action_required' :
+                            'risk-badge restricted';
+            const riskText = company.riskState === 'clear' ? 'CLEAR — No Outstanding Issues' :
+                           company.riskState === 'action_required' ? `ACTION REQUIRED — ${company.obligationsDue} Obligations Due` :
+                           'RESTRICTED — Overdue Obligations';
+
+            let html = `
+                <div class="pdf-page">
+                    <div class="pdf-header">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="font-weight: 700; color: #111827; font-size: 16px;">Agreeme</span><span style="font-weight: 700; color: #0f766e; font-size: 16px;">NT</span>
+                            </div>
+                            <div class="pdf-subtitle">Company Snapshot Evidence Pack</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="pdf-date">Generated 26 March 2026</div>
+                        </div>
+                    </div>
+
+                    <div class="pdf-section">
+                        <h3>Company Summary</h3>
+                        <h2 style="margin: 0 0 12px; font-size: 20px;">${company.name}</h2>
+                        <div style="font-family: monospace; font-size: 13px; color: #6b7280; margin-bottom: 12px;">ACN: ${company.acn}</div>
+                        <div class="${riskClass}" style="margin-bottom: 16px;">${riskText}</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                            <div style="background: #f9fafb; padding: 12px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #111827;">${company.tenementCount}</div>
+                                <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">TENEMENTS</div>
+                            </div>
+                            <div style="background: #f9fafb; padding: 12px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #111827;">${company.agreementCount}</div>
+                                <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">AGREEMENTS</div>
+                            </div>
+                            <div style="background: #f9fafb; padding: 12px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #111827;">${company.obligationsDue}</div>
+                                <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">DUE (90D)</div>
+                            </div>
+                            <div style="background: #f9fafb; padding: 12px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #111827;">${company.obligationsOverdue}</div>
+                                <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">OVERDUE</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pdf-section">
+                        <h3>Tenement Overview</h3>
+                        <table class="pdf-table">
+                            <thead>
+                                <tr>
+                                    <th>Tenement ID</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Agreements</th>
+                                    <th>Activity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${companyTenements.slice(0, 5).map(t => {
+                                    const tAgreements = t.agreements.length;
+                                    const activityDot = t.activity === 'can_proceed' ? '🟢' : t.activity === 'restricted' ? '🟡' : '🔴';
+                                    return `
+                                        <tr>
+                                            <td style="font-family: monospace;">${t.id}</td>
+                                            <td>${t.type}</td>
+                                            <td>${t.status}</td>
+                                            <td>${tAgreements}</td>
+                                            <td>${activityDot}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pdf-section">
+                        <h3>Map Snapshot</h3>
+                        <div class="map-placeholder">Map snapshot — tenement overlay</div>
+                    </div>
+
+                    <div class="pdf-section">
+                        <h3>Agreements</h3>
+                        <table class="pdf-table">
+                            <thead>
+                                <tr>
+                                    <th>Agreement</th>
+                                    <th>Parties</th>
+                                    <th>Term</th>
+                                    <th>Obligations</th>
+                                    <th>Overdue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${companyAgreements.map(a => {
+                                    const aObligations = obligations.filter(o => o.agreementId === a.id);
+                                    const overdue = aObligations.filter(o => o.status === 'overdue').length;
+                                    return `
+                                        <tr>
+                                            <td>${a.name}</td>
+                                            <td>${a.toGroup.split(' ')[0]}</td>
+                                            <td>${a.term}</td>
+                                            <td>${aObligations.length}</td>
+                                            <td style="color: ${overdue > 0 ? '#ef4444' : '#6b7280'}; font-weight: ${overdue > 0 ? '600' : '400'};"><strong>${overdue}</strong></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+            `;
+
+            if (evidencePackTab === 'snapshot') {
+                const overdueObligs = obligations.filter(o => {
+                    const agr = agreements.find(a => a.id === o.agreementId);
+                    return agr && agr.companyId === currentCompanyId && o.status === 'overdue';
+                });
+
+                const dueNextObligs = obligations.filter(o => {
+                    const agr = agreements.find(a => a.id === o.agreementId);
+                    return agr && agr.companyId === currentCompanyId && o.status === 'upcoming';
+                });
+
+                if (overdueObligs.length > 0) {
+                    html += `
+                        <div class="pdf-section">
+                            <h3 style="color: #ef4444;">Overdue Obligations</h3>
+                            <table class="pdf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Obligation</th>
+                                        <th>Agreement</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Evidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${overdueObligs.map(o => {
+                                        const agr = agreements.find(a => a.id === o.agreementId);
+                                        return `
+                                            <tr>
+                                                <td>${o.type}</td>
+                                                <td>${agr.name}</td>
+                                                <td>${o.dueDate || 'Trigger-based'}</td>
+                                                <td><span class="status-pill ${o.status}">OVERDUE</span></td>
+                                                <td>${o.evidenceAttached ? '✓' : '✗'}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                if (dueNextObligs.length > 0) {
+                    html += `
+                        <div class="pdf-section">
+                            <h3>Due Next 90 Days</h3>
+                            <table class="pdf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Obligation</th>
+                                        <th>Agreement</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Evidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${dueNextObligs.slice(0, 3).map(o => {
+                                        const agr = agreements.find(a => a.id === o.agreementId);
+                                        return `
+                                            <tr>
+                                                <td>${o.type}</td>
+                                                <td>${agr.name}</td>
+                                                <td>${o.dueDate || 'Trigger-based'}</td>
+                                                <td><span class="status-pill ${o.status}">UPCOMING</span></td>
+                                                <td>${o.evidenceAttached ? '✓' : '✗'}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            } else {
+                const allObligations = obligations.filter(o => {
+                    const agr = agreements.find(a => a.id === o.agreementId);
+                    return agr && agr.companyId === currentCompanyId;
+                });
+
+                companyAgreements.forEach(agr => {
+                    const agrObls = allObligations.filter(o => o.agreementId === agr.id);
+                    html += `
+                        <div class="pdf-section">
+                            <h3 style="border-bottom-color: #0f766e;">${agr.name}</h3>
+                            <table class="pdf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Obligation</th>
+                                        <th>Description</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${agrObls.map(o => `
+                                        <tr>
+                                            <td>${o.type}</td>
+                                            <td style="font-size: 12px;">${o.description.substring(0, 50)}...</td>
+                                            <td>${o.dueDate || 'Trigger'}</td>
+                                            <td><span class="status-pill ${o.status}">${o.status.toUpperCase()}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `
+                    <div class="pdf-footer">
+                        Generated by AgreemeNT | Tenurement Pty Ltd | Confidential
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('evidenceContent').innerHTML = html;
+        }
+
+        function downloadEvidencePDF() {
+            showToast('PDF download would start in production');
+        }
+
+        // ==================== UI UTILITIES ====================
+
+        function dismissAll() {
+            currentState = 'MAP_ONLY';
+            currentCompanyId = null;
+            currentAgreementId = null;
+            expandedObligations.clear();
+            navHistory.length = 0;
+            document.getElementById('companyCard').classList.remove('show');
+            document.getElementById('evidencePack').classList.remove('show');
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchInput').placeholder = 'Search company or tenement ID...';
+            clearTenementLayers();
+            map.flyTo([-22.3, 118.5], 6);
+            updateNavUI();
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ==================== KEYBOARD NAVIGATION ====================
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.getElementById('aiModal').classList.contains('show')) {
+                    closeAIModal();
+                } else if (document.getElementById('evidencePack').classList.contains('show')) {
+                    closeEvidencePack();
+                } else if (currentState === 'AGREEMENTS') {
+                    showCompanyCard(currentCompanyId);
+                } else if (currentState === 'COMPANY_CARD') {
+                    dismissAll();
+                }
+            }
+        });
+
+        // ==================== INITIALIZATION ====================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+        });
+    </script>
+</body>
+</html>
